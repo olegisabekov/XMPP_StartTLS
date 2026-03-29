@@ -1,0 +1,2 @@
+XMPPClass	KEYWORD1
+begin KEYWORD2
