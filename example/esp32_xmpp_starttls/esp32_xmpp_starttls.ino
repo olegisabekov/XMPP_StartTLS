@@ -50,7 +50,7 @@ char tz_zone_info[40] = "SAMT-4";
 
 WiFiClientSecure client;
 
-char* recipient = "xxx@xmpp.example.com";
+const char* recipient = "xxx@xmpp.example.com";
 XMPP xmpp("xxx", "xxxxxx", "sensor", Server, recipient);
 
 void debug_str( const char* intro, const char* message) 

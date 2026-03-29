@@ -15,7 +15,7 @@ class XMPP {
 private:
   static const uint8_t idLength = 8;
   char uniqueId[idLength];
-  static const uint8_t WaitTimeout = 2000;
+  static const uint16_t WaitTimeout = 2000;
 	char* username;
 	char* password;
 	char* resource;
@@ -42,7 +42,7 @@ private:
   void sendOpenStream();
 	void authenticate();
 	void bindResource();
-	void createPresence(char* status, char* message);
+	void createPresence(const char* status, const char* message);
 	void createRoster();
 	
 	void handlePresence(String input);
@@ -62,18 +62,18 @@ private:
 	char* createUniqueID();
 	String findTagBody(String input, String tagName);
 	String findAttrValue(String input, String attrName);
-	void debug(char* message);
-	void debug(char* intro, char* message);
+	void debug(const char* message);
+	void debug(const char* intro, const char* message);
 
 	void flushBuffer();
 	void resizeBuffer();
 
 public:
-	XMPP(char* username, char* password, char* resource, char* server, char* recipient);
+	XMPP(const char* username, const char* password, const char* resource, const char* server, const char* recipient);
 	
   bool startTls();
   bool connect();
-	void sendMessage(char* to, char* body, char* type);
+	void sendMessage(const char* to, const char* body, const char* type);
 	void handleIncoming();
 	void closeStream();
 	bool getRecAvailable();
@@ -81,7 +81,7 @@ public:
 	
 	void setClient(Stream* client);
 	void setSerial(Stream* stream);
-	void setRecipient(char* recipient);
+	void setRecipient(const char* recipient);
 	bool getConnected();
 	Stream* getClient();
 	

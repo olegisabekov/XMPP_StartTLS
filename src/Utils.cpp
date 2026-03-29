@@ -1,7 +1,7 @@
 #include <Utils.h>
 #include <string.h>
 
-bool Utils::startsWith(char* buffer, char* item) {
+bool Utils::startsWith(const char* buffer, const char* item) {
   if(strlen(item) > strlen(buffer)) {
     return false; 
   }
@@ -16,7 +16,7 @@ bool Utils::startsWith(char* buffer, char* item) {
   return true;
 }
 
-bool Utils::endsWith(char* buffer, char* item) {
+bool Utils::endsWith(const char* buffer, const char* item) {
   if(strlen(item) > strlen(buffer)) {
     return false;
   } 

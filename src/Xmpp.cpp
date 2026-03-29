@@ -45,12 +45,12 @@ prog_char close_stream[] PROGMEM = "<presence from='%s' type='unavailable'/></st
 
 prog_char startTLS[] PROGMEM = "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>";
 
-XMPP::XMPP(char* username, char* password, char* resource, char* server, char* recipient) : bufStep(500) {
-	this->username = username;
-	this->password = password;
-	this->resource = resource;
-	this->server = server;
-	this->recipient = recipient;
+XMPP::XMPP(const char* username, const char* password, const char* resource, const char* server, const char* recipient) : bufStep(0xFF) {
+	this->username = (char *)username;
+	this->password = (char *)password;
+	this->resource = (char *)resource;
+	this->server = (char *)server;
+	this->recipient = (char *)recipient;
 
 	int jidLength = strlen(this->username) + strlen(this->server) + 1;
 	this->jid = (char*) malloc(jidLength + 1);
@@ -96,8 +96,6 @@ bool XMPP::is_startTls()
   debug("buffer", buffer);
   String str = String(buffer);
   flushBuffer();
-  Serial.print("str: ");
-  Serial.println(str);
   if(str.indexOf("<required/></starttls>") > -1)
     return true;
   return false;
@@ -106,6 +104,11 @@ bool XMPP::is_startTls()
 bool XMPP::startTls()
 {
   debug("startTLS");
+  if(!client)
+  {
+    debug("client not set!");
+    return false;
+  }
   if(!is_startTls())
     return false;
 	int startTLSLength = strlen_P(startTLS);
@@ -133,6 +136,11 @@ bool XMPP::startTls()
 
 bool XMPP::connect() 
 {
+  if(!client)
+  {
+    debug("client not set!");
+    return false;
+  }
   if(!buffer)
 	  this->buffer = (char*) malloc(currSize);
 	bool sendMessage = true;
@@ -212,6 +220,8 @@ bool XMPP::checkIfComplete(char* buffer) {
 		case SENDING:
 			success = checkMessage(buffer);
 			break;
+    case BIND:
+      break;
 	}
 	return success;
 }
@@ -238,6 +248,10 @@ void XMPP::sendStanza() {
 		case BIND:
 			createPresence("Sending data", "chat");
 			break;
+    case AVAILABLE:
+      break;
+    case SENDING:
+      break;
 	}
 }
 
@@ -281,7 +295,7 @@ void XMPP::authenticate() {
 }
 
 void XMPP::bindResource(){
-	char* type = "set";
+	const char* type = "set";
 	debug("bindResource()");
 	// Replace the specifier(%s) in bind template with correct value
 	int bindResourceLength = strlen_P(bind_resource) + strlen(this->resource);
@@ -292,11 +306,11 @@ void XMPP::bindResource(){
 	
 	int totalBindResourceLength = strlen(bindTemp) + iqLength;
 	char buffer[totalBindResourceLength];
-	int n = sprintf_P(buffer, iq_stanza, type, uniqueID, bindTemp);
+	sprintf_P(buffer, iq_stanza, type, uniqueID, bindTemp);
 	send(buffer);
 }
 
-void XMPP::createPresence(char* status, char* message){
+void XMPP::createPresence(const char* status, const char* message){
 	debug("createPresence()");
 	int totalPresenceLength = strlen_P(presence_stanza) + strlen(status) + strlen(message) + strlen(this->jid) - 5;
 	char buffer[totalPresenceLength];
@@ -312,16 +326,16 @@ void XMPP::createRoster(){
 	int rosterLength = strlen_P(roster);
 	char rosterTemp[rosterLength];
 	strcpy_P(rosterTemp, roster);
-	char* type = "get";
+	const char* type = "get";
 	char* uniqueID = createUniqueID();
 	int iqLength = strlen(rosterTemp) + strlen_P(iq_stanza) + strlen(type) + strlen(uniqueID);
 	char buffer[iqLength];
-	int n = sprintf_P(buffer, iq_stanza, type, uniqueID, rosterTemp);
+	sprintf_P(buffer, iq_stanza, type, uniqueID, rosterTemp);
 	send(buffer);
 }
 
 
-void XMPP::sendMessage(char* to, char* body, char* type){
+void XMPP::sendMessage(const char* to, const char* body, const char* type){
 	int bodyLength = strlen(body);
 	char bodyData[bodyLength + 1];
 	memset(bodyData, '\0', bodyLength + 1);
@@ -331,7 +345,7 @@ void XMPP::sendMessage(char* to, char* body, char* type){
 	strcpy_P(templ, message_stanza);
 	int totalMessageLength = messageLength + strlen(this->fullJid) + strlen(to) + bodyLength + strlen(type) + 1;
 	char buffer[totalMessageLength];
-	int n = sprintf(buffer, templ, this->jid, to, type, bodyData);
+	sprintf(buffer, templ, this->jid, to, type, bodyData);
 	send(buffer);
 }
 
@@ -383,7 +397,9 @@ bool XMPP::processInput(char* input) {
 		case AVAILABLE:
 		case SENDING:
 			handleStanza(input);
-		break;
+		  break;
+    case BIND:
+      break;
 	}
 	return sendMessage;
 }
@@ -443,7 +459,6 @@ bool XMPP::handleBindResource(String input){
 String XMPP::findTagBody(String input, String tagName) {
 	int startingBracket = 0;
 	int closingBracket;
-	int space;
 	int currentIndex = 0;
 	String tag;
 	String value = "";
@@ -470,7 +485,7 @@ String XMPP::findAttrValue(String input, String attrName) {
 	if(attrIndex > -1) {
 		int doubleQuote = input.indexOf("\"", attrIndex + attrLength);
 		int singleQuote = input.indexOf("'", attrIndex + attrLength);
-		int quoteIndex = (doubleQuote > -1 && doubleQuote < singleQuote || singleQuote == -1) ?  doubleQuote : singleQuote;
+		int quoteIndex = ((doubleQuote > -1 && doubleQuote < singleQuote) || singleQuote == -1) ?  doubleQuote : singleQuote;
 		String attrValue = input.substring(attrIndex + attrLength, quoteIndex);
 		return attrValue;
 	} else {
@@ -576,7 +591,7 @@ void XMPP::resizeBuffer() {
 	buffer = newBuf;  
 }
 
-void XMPP::debug(char* message) {
+void XMPP::debug(const char* message) {
 	if(this->serial != NULL){
 		this->serial->print("D ");
 		this->serial->println(message);
@@ -584,7 +599,7 @@ void XMPP::debug(char* message) {
 	}
 }
 
-void XMPP::debug(char* intro, char* message) {
+void XMPP::debug(const char* intro, const char* message) {
 	if(this->serial != NULL){
 		this->serial->print("D ");
 		this->serial->print(intro);
@@ -594,8 +609,8 @@ void XMPP::debug(char* intro, char* message) {
 	}
 }
 
-void XMPP::setRecipient(char* recipient) {
-	this->recipient = recipient;
+void XMPP::setRecipient(const char* recipient) {
+	this->recipient = (char *)recipient;
 }
 
 bool XMPP::getRecAvailable() {
@@ -603,8 +618,13 @@ bool XMPP::getRecAvailable() {
 }
 
 void XMPP::send(char* data) {
-	debug("Sending", data);
-	this->client->print(data);
+  if(client)
+  {
+	  debug("Sending", data);
+	  this->client->print(data);    
+  }
+  else
+    debug("Sending", "client not set!");
 }
 
 bool XMPP::checkMessage(char* buffer) {
