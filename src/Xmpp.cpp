@@ -45,22 +45,40 @@ prog_char close_stream[] PROGMEM = "<presence from='%s' type='unavailable'/></st
 
 prog_char startTLS[] PROGMEM = "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>";
 
-XMPP::XMPP(const char* username, const char* password, const char* resource, const char* server, const char* recipient) : bufStep(0xFF) {
-	this->username = (char *)username;
-	this->password = (char *)password;
-	this->resource = (char *)resource;
-	this->server = (char *)server;
-	this->recipient = (char *)recipient;
+XMPP::XMPP() : bufStep(0xFF) 
+{
+	this->currentState = CLOSED;
+	this->connected = false;
+	this->currSize = this->bufStep;
+  this->buffer = (char*) malloc(currSize);
+}
 
-	int jidLength = strlen(this->username) + strlen(this->server) + 1;
-	this->jid = (char*) malloc(jidLength + 1);
-	sprintf(this->jid, "%s@%s", username, server);
+XMPP::XMPP(const char* username, const char* password, const char* resource, const char* server, const char* recipient) : bufStep(0xFF) 
+{
+  setConnectionData(username, password, resource, server, recipient);
 	
 	this->currentState = CLOSED;
 	this->connected = false;
 	this->currSize = this->bufStep;
   this->buffer = (char*) malloc(currSize);
 }
+
+void XMPP::setConnectionData(const char* username, const char* password, const char* resource, const char* server, const char* recipient)
+{
+	this->username = (char *)username;
+	this->password = (char *)password;
+	this->resource = (char *)resource;
+	this->server = (char *)server;
+	this->recipient = (char *)recipient;
+  if(this->jid)
+  {
+    free(this->jid);
+    this->jid = nullptr;
+  }
+	int jidLength = strlen(this->username) + strlen(this->server) + 1;
+	this->jid = (char*) malloc(jidLength + 1);
+	sprintf(this->jid, "%s@%s", username, server);
+}  
 
 bool XMPP::wait_incoming(void)
 {
@@ -335,18 +353,22 @@ void XMPP::createRoster(){
 }
 
 
-void XMPP::sendMessage(const char* to, const char* body, const char* type){
-	int bodyLength = strlen(body);
-	char bodyData[bodyLength + 1];
-	memset(bodyData, '\0', bodyLength + 1);
-	memcpy(bodyData, body, bodyLength);
-	int messageLength = strlen_P(message_stanza) + 1;
-	char templ[messageLength];
-	strcpy_P(templ, message_stanza);
-	int totalMessageLength = messageLength + strlen(this->fullJid) + strlen(to) + bodyLength + strlen(type) + 1;
-	char buffer[totalMessageLength];
-	sprintf(buffer, templ, this->jid, to, type, bodyData);
-	send(buffer);
+void XMPP::sendMessage(const char* to, const char* body, const char* type)
+{
+  if(this->connected)
+  {
+	  int bodyLength = strlen(body);
+	  char bodyData[bodyLength + 1];
+	  memset(bodyData, '\0', bodyLength + 1);
+	  memcpy(bodyData, body, bodyLength);
+	  int messageLength = strlen_P(message_stanza) + 1;
+	  char templ[messageLength];
+	  strcpy_P(templ, message_stanza);
+	  int totalMessageLength = messageLength + strlen(this->fullJid) + strlen(to) + bodyLength + strlen(type) + 1;
+	  char buffer[totalMessageLength];
+	  sprintf(buffer, templ, this->jid, to, type, bodyData);
+	  send(buffer);
+  }
 }
 
 void XMPP::closeStream(){
@@ -511,6 +533,8 @@ void XMPP::handleStanza(char* input) {
 
 void XMPP::handlePresence(String input) {
 	debug("handlePresence");
+  if(!this->recipient)
+    return;
 	String type = findAttrValue(input, "type");
 	if(type.length() > 0) {
 		if(type.equals("subscribe")) {

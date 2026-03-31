@@ -69,8 +69,9 @@ private:
 	void resizeBuffer();
 
 public:
+  XMPP();
 	XMPP(const char* username, const char* password, const char* resource, const char* server, const char* recipient);
-	
+  void setConnectionData(const char* username, const char* password, const char* resource, const char* server, const char* recipient);
   bool startTls();
   bool connect();
 	void sendMessage(const char* to, const char* body, const char* type);
