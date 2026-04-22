@@ -264,7 +264,7 @@ void XMPP::sendStanza() {
 			bindResource();
 			break;
 		case BIND:
-			createPresence("Sending data", "chat");
+			createPresence("Sending data", "online");
 			break;
     case AVAILABLE:
       break;
