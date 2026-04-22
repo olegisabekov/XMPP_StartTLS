@@ -9,4 +9,4 @@ Depends on Base64 (https://github.com/Xander-Electronics/Base64). This should be
 
 # Limitations
 
-SASL-PLAIN authentication only
+SASL-PLAIN authentication only over SSL
